@@ -1,0 +1,42 @@
+# Conteúdo do docker-compose.yml
+version: "3.9"
+
+services:
+  db:
+    image: ghcr.io/citusdata/pg_cron:15
+    container_name: erp-db
+    restart: always
+    environment:
+      POSTGRES_USER: erpuser
+      POSTGRES_PASSWORD: erpsecret
+      POSTGRES_DB: erp
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: >
+      postgres -c shared_preload_libraries=pg_cron
+               -c cron.database_name=erp
+               -c max_connections=200
+               -c timezone=America/Sao_Paulo
+
+  api:
+    build: ./erp-api
+    container_name: erp-api
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: erp
+      DB_USER: erpuser
+      DB_PASSWORD: erpsecret
+      PORT: 3000
+      JWT_SECRET: supersecret
+      JWT_REFRESH_SECRET: superrefresh
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./erp-api:/usr/src/app
+      - /usr/src/app/node_modules
